@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "express": "^4.18.2",
+    "yarn": "^1.22.19"
+  },
+  "name": "stock-app-backend",
+  "version": "1.0.0",
+  "description": "aplicacion full stack mern",
+  "main": "app.js",
+  "author": "mcuadros",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "dev": "nodemon app.js"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}

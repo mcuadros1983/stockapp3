@@ -1,0 +1,39 @@
+1- Estructura
+. Carpeta inicial STOCK APP
+. Subcarpetas (backend y frontend)
+
+2. Configuracion backend
+. Ingresar carpeat backend
+- Instalar node (node.js es un entorno de ejecucion que permite ejecutar lenguaje javascript desde el lado del servidor)
+- Instalar npm
+- Instalar yarn para el manejo de instaladores
+npm install yarn
+- Instalar express(express framework de node que permite la creacion de servidores mas amigables)
+yarn add express
+- Instalar nodemon
+yarn add nodemon -D 
+modificar package.json 
+ "scripts": {
+    "dev": "app.js"
+  },
+Ejecutar dev: yarn dev
+
+
+
+3. Inicializar proyecto bakend node
+yarn init (responder las preguntas)
+
+4. Crear archivo app.js dentro de backend y configuracion incial codigo
+const express = require("express")
+const app = express()
+
+5. Configuracion de las rutas y servidor
+//Configuracion de las rutas
+app.get('/',(req,res)=>{//req es lo que llega y res es lo que respondemos
+    console.log("peticion recibida")
+})
+
+app.listen(4000,()=>{
+    console.log("server 4000")
+})
+
