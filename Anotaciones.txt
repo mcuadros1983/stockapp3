@@ -14,9 +14,11 @@ yarn add express
 yarn add nodemon -D 
 modificar package.json 
  "scripts": {
-    "dev": "app.js"
+    "dev": "nodemon app.js"
   },
 Ejecutar dev: yarn dev
+- Instalar dotenv (para variables de entorno)
+yarn add dotenv
 
 
 
@@ -27,13 +29,827 @@ yarn init (responder las preguntas)
 const express = require("express")
 const app = express()
 
-5. Configuracion de las rutas y servidor
+5. Configuracion de las rutas
 //Configuracion de las rutas
 app.get('/',(req,res)=>{//req es lo que llega y res es lo que respondemos
     console.log("peticion recibida")
 })
 
-app.listen(4000,()=>{
-    console.log("server 4000")
+6. Configuracion del servidor (instalar dotenv crear archivo .dotenv dentro de carpeta backend)
+//En archivo .env
+PORT = 5000
+
+//em app.js
+const PORT = process.env.PORT || 4000 //variable de entorno
+app.listen(PORT,()=>{
+    console.log(`server ${PORT}`)
 })
+
+7. Enviando un archivo al servidor
+//Configuracion de las rutas
+app.get('/',(req,res)=>{//req es lo que llega y res es lo que respondemos
+    console.log("peticion recibida")
+    // res.send("Hola mundo")
+    res.status(200).sendFile("index.html", {root: __dirname})
+})
+
+8. Configurando nuestros middleware
+- Rutas estaticas
+Crear carpeta public dentro de backend (todo lo que esta dentro de esto se requerira cuando se cargue la pagina)
+Se crean: index.html, style.css, index.js
+Se deben linkear tanto el archivo style como el script de index en el archivo index.html
+
+- Codigo en app.js
+app.use(express.static(path.join(__dirname, "public"))) //unimos la direccion de app.js con la carpeta public 
+- Requerir path 
+const path = require("path") //modulo nativo de nodejs para que puedan aceptarse las distintas configuraciones de las barras en los distintos sistemas operativos
+
+9. Crear base de datos en MONGODB 
+https://www.youtube.com/watch?v=2VmofdpfkxU&list=PLAmcNbGd0fkNIA3xFAbu99xgorPm4yxFX&index=13
+48:14
+
+10. CREAR BASE MONGODB / ATLAS
+https://www.youtube.com/watch?v=2VmofdpfkxU&list=PLAmcNbGd0fkNIA3xFAbu99xgorPm4yxFX&index=14
+01:00:00
+
+11. CONECTAR A MONGODB
+mongodb+srv://mcuadros83:<password>@development.48eeibf.mongodb.net/?retryWrites=true&w=majority
+- Instalar mongoose
+yarn add mongoose
+- Requerir el paquete en app.js
+const mongoose = require("mongoose")
+- Conexion en codigo (devuelve una promesa, por lo tanto debemos recibirlo con un .then y .catch en caso de error. Creamos en .env la variable d eentorno del password y cambiamos la conexion del puerto dentro del .then para que se hagan primero la conexion y despuse se llame al peurto
+mongoose.connect(
+    `mongodb+srv://mcuadros83:${process.env.MONGO_DB_PASSWORD}@development.48eeibf.mongodb.net/stock-app?retryWrites=true&w=majority` //stock-app le asigna el nombre de la base de datos
+)
+.then(result =>{
+    app.listen(PORT, () => {
+        console.log(`server ${PORT}`)
+    })
+    console.log("Conexion exitosa a la base de datos")
+})
+.catch((err)=> console.log("err"))
+
+12. CREAR FORMULARIO EN HTML index.html
+    <div class="form-container">
+        <input type="text" id="productName" placeholder="Nombre del producto">
+        <!-- Atajo ctr+alto+flecha abajo para copiar -->
+        <input type="text" id="productPrice" placeholder="Precio del producto">
+        <button>Crear producto</button>
+    </div>
+CSS:
+.form-container{
+    display: flex;
+    flex-direction: column;
+    max-width: 20rem;
+}
+
+input{
+    margin-bottom: 0.5rem;
+}
+
+13. CODIGO EN index.js (con javascript)
+Ejemplo1
+const inputName = document.querySelector("#productName")
+const inputPrice = document.querySelector("#productPrice")
+console.log({ inputName, inputPrice })
+
+Ejemplo2
+// console.log("Esta consola ya es en el navegador2")
+
+const inputName = document.querySelector("#productName")
+const inputPrice = document.querySelector("#productPrice")
+// console.log({ inputName, inputPrice })
+
+const button = document.querySelector('button')
+button.addEventListener('click', (e)=>{
+    console.log({name:inputName.value, price: inputPrice.value}) 
+})
+
+Codigo Final:
+const button = document.querySelector('button')
+button.addEventListener('click', (e) => {
+    console.log({ name: inputName.value, price: inputPrice.value })
+    const name = inputName.value
+    const price = inputPrice.value
+
+    fetch('/api/v1/productos', { //se indica la pagina desde donde se realizara el POST
+        method: 'POST', headers: { //el metodo que se utilizara ademas de indicar en el headers que tipo de elemento enviaremos
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ //se convierte el dato en un string que contiene un objeto tipo json
+            name,
+            price
+        }),
+    })
+
+})
+
+//Agregamos el console.log para en app.js para mostrar el req del body
+//Junto con el middlware de express para que pueda leer los archivos json app.use(express.json())
+
+app.post('/api/v1/products',(req,res,next)=>{//req es lo que llega y res es lo que respondemos
+    console.log("peticion recibida")
+    console.log({body: req.body})
+    res.status(201).json({ok:true})
+    next() //next da la orden de que al terminar este middleware continue con el siguiente
+})
+
+14. CONFIGURANDO EL MODELO QUE SE GUARDARA EN UNA COLECCION DE MONGODB
+- Definir el esquema (esto en app.js debajo de la conexion con mongoose
+const productoSchema = mongoose.Schema({
+    name: {type:String, require:true},
+    price: Number
+},
+{timestamps:true}//se crean 2 campos automatcamente createdApp y updatedApp
+)
+- Definir el modelo para interactuar con la coleccion (dentro del middleware que enviara el post)
+app.post('/api/v1/products', (req, res) => {//req es lo que llega y res es lo que respondemos
+    const newProduct = new Product({
+        name: req.body.name,
+        price: req.body.price
+    })
+    newProduct.save();
+    res.status(201).json({ ok: true })
+})
+
+- Debemos crear la variable de entonro para la contraseña MONGO_DB_PASSWORD = en el servidor donde este alojado nuestra aplicacion ya sea Heroku o Azure
+
+https://github.com/mgesudev/stock-app
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+CLIENT SIDE RENDERING
+- El index.html solo contiene un div y la estructura se la enviamos a traves de javascript
+
+SERVER SIDE RENDERING
+- El html y todo los estaticos son enviados desde el servidor
+Ej: en index.js
+const body = document.querySelector("body")
+const div = document.createElement("div")
+const html = `<h2>Este es un contenido que lo agregamos con javascript CSR</h2>`
+div.innerHTML = html
+body.appenChild(div)
+
+PREUBAS CON POKE API
+
+PETICION DESDE EL NAVEGADOR
+const pokeApiBaseUrl = "https://pokeapi.co/api/v2/pokemon"
+fetch(`${pokeApiBaseUrl}/charmander`)
+    .then((res) => { //fetch retorna una respuesta por l oque se debe tratar con .then
+        return res.json()//el pasarlo a json tambien terona una promesa, por lo que se debe volver a tuilizar .then estamos recibiendo un string pero debemos convertirlo a json dicho proceso demora por lo cual debemos ocupar .then
+    })
+    .then((pokemon) =>{
+        console.log({pokemon})
+        const html = `
+            <h3>Nombre del Pokemon ${pokemon.name} (propiedad .name viene de la bbdd) </h3>
+            <img src=${pokemon.sprites.front_default} alt="imagen del pokemon ${pokemon.name}">
+        `
+        const div = document.createElement("div")
+        div.classList.add("poke-card")
+        div.innerHTML = html
+        document.querySelector("body").appendChild(div)
+    })
+    .catch()
+
+PETICION DESDE EL SERVIDOR
+
+- Instalacion de AXIOS (libreria que se utiliza para acceder a pedidos al pservidor tipo fetch, pero que se pueden usar tanto desde el navegador como del servidor, fetch solo puede se rutilizado desde el navegador)
+yarn install axios
+- Procesamiento Axios: Esta libreria hace un preprocesamiento de la respuesta por lo tanto el .then ya no es necesrio 
+- Se debe requerir (app.js)
+const axios = require("axios")
+
+app.get('/', (req, res, next) => {
+    const pokeApiBaseUrl = "https://pokeapi.co/api/v2/pokemon"
+    axios(`${pokeApiBaseUrl}/charmander`)
+        .then((axiosResponse) => { //fetch retorna una respuesta por l oque se debe tratar con .then
+            const pokemon = axiosResponse.data
+            console.log({ pokemon })
+            const html = `
+            <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Nuestra no tan tremenda APP</title>
+                <link rel="stylesheet" href="style.css">
+            </head>
+            <body>
+            <h1>Nuestra no tan tremenda APP</h1>
+            <div class="form-container">
+                <input type="text" id="productName" placeholder="Nombre del producto">
+                <input type="text" id="productPrice" placeholder="Precio del producto">
+                <button>Crear producto</button>
+                <h3>Nombre del Pokemon ${pokemon.name} (propiedad .name viene de la bbdd) </h3>
+                <img src=${pokemon.sprites.front_default} alt="imagen del pokemon ${pokemon.name}">
+                <span><span/>
+        
+            </div>
+            </body>
+            `
+            res.send(html)
+        })
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+REACT (Libreria de Javascript, Motor de renderizado para construir interfaces de usuario)
+Multientorno ya sea aplicaciones de escritorio o aplicaciones web
+
+
+ATAJOS:
+ctr+shif+5 (crear una terminal al lado de otra)
+shit+alt+f (organizar el codigo)
+altgr + acento invertido (baktiks)
+
+
+INICIALIZANDO APP EN REACT
+- Instalar create-react-app
+npx create-react-app nombreapp
+
+react ejecuta webpack (empaquetar el codigo en archivos que se enviaran) y babel (convierte codigo de react en codigo compatible con cualquier navegador)
+
+USESTATE Y USEEFFECT
+import logo from './logo.svg';
+import './App.css';
+import { useState, useEffect } from "react";
+
+function App() {
+  const [pokemon, setPokmemon] = useState({})
+
+  useEffect(() => {
+    const pokeApiBaseUrl = "https://pokeapi.co/api/v2/pokemon"
+    fetch(`${pokeApiBaseUrl}/charmeleon`)
+      .then((res) => { //fetch retorna una respuesta por l oque se debe tratar con .then
+        return res.json()//el pasarlo a json tambien terona una promesa, por lo que se debe volver a tuilizar .then estamos recibiendo un string pero debemos convertirlo a json dicho proceso demora por lo cual debemos ocupar .then
+      })
+      .then((poke) => {
+        // console.log({ pokemon })
+        setPokmemon(poke)
+
+      })
+  }, [])
+
+  console.log({pokemon})
+
+  return (
+    <div className="App">
+      {/* <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <p>
+          Edit <code>src/App.js</code> and save to reload.
+        </p>
+        <a
+          className="App-link"
+          href="https://reactjs.org"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn React
+        </a>
+      </header> */}
+      <div>
+        <h3>{pokemon.name}</h3>
+        <img src={pokemon.sprites.front_default}></img>
+        <span>#{pokemon.id}</span>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+MIDUDEV 
+react desde cero 
+nextjs desde cero
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+INTRODUCCION A REACT
+
+- CREAR PROYECTO EN CARPETA FRONTEND
+npx create-react-app my-app
+
+- CODIGO (app.js en frontend) //PRUEBA DE COMUNICACION ENTRE FRONT Y BACK
+import logo from './logo.svg';
+import './App.css';
+import { useState } from 'react';
+
+function App() {
+  const [productName, setProductName] = useState("Curso de react")
+  const [productPrice, setProductPrice] = useState(0)
+  
+  const handleNameChange = (e) => {
+    const name = e.target.value
+    setProductName(name)
+  }
+  const handlePriceChange = (e) => {
+    const price = e.target.value
+    setProductPrice(price)
+  }
+  const handleSubmit = (e)=>{
+    e.preventDefault()//evita hacer la peticion del formulario al servidor
+    console.log(e)
+    fetch("http://localhost:4000/api/v1/products",{ //con esta configuracion estamos aputando al backend
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+      },
+      body:JSON.stringify({
+        name: productName,
+        price: productPrice
+      })
+    })
+  }
+
+  console.log({ productName })
+  console.log({ productPrice })
+  return (
+    <div className="App">
+      <h1>NUEVO PRODUCTO</h1>
+      <form onSubmit={handleSubmit}>
+        <input onChange={handleNameChange} type="text" name="name" placeholder='Nombre del producto' value={productName}></input>
+        <input onChange={handlePriceChange} type="number" name="price" placeholder='Precio del producto' value={productPrice}></input>
+        <button>Crear producto</button>
+      </form>
+    </div>
+  );
+}
+
+export default App;
+
+- EN BACKEND (en app.js)
+require("dotenv").config()
+const express = require("express")
+const mongoose = require("mongoose")
+const cors = require("cors");
+
+const app = express()
+
+app.use(cors())//intercepta todas las request que ingresarn y por deefecto deja pasar todas las request que vengan de cualquier servidor
+
+mongoose.connect(
+    `mongodb+srv://mcuadros83:${process.env.MONGO_DB_PASSWORD}@development.48eeibf.mongodb.net/stock-app?retryWrites=true&w=majority`///stock-app indica la nueva base de datos que queremos que se cree
+)
+    .then(result => {
+        app.listen(PORT, () => {
+            console.log(`server ${PORT}`)
+        })
+        console.log("Conexion exitosa a la base de datos")
+    })
+    .catch((err) => console.log("err"))
+
+const productSchema = mongoose.Schema({
+    name: { type: String, require: true },
+    price: Number
+},
+    { timestamps: true }//se crean 2 campos automatcamente createdApp y updatedApp
+)
+
+const Product = mongoose.model("Product", productSchema, "Products") //nombremodelo, nombreesquema, nombrecoleccion (si no llenamos este campo, mongodb pluraiza el nombre del modelo ej Products)
+
+app.use(express.json())
+
+
+app.post('/api/v1/products', (req, res) => {//req es lo que llega y res es lo que respondemos
+    console.log({body: req.body})
+        const newProduct = new Product(req.body)
+    // const newProduct = new Product({
+        // name: req.body.name,
+        // price: req.body.price
+    //})
+
+    // newProduct
+    //     .save()
+    //     .then(result => {
+    //         res.status(201).json({ ok: true })
+    //     })
+    //     .catch((err) => console.log(err))
+})
+
+
+const PORT = process.env.PORT || 4000
+
+
+
+- INSTALACION DE CORS (permite comunicar servidres en distintas ubicaciones)
+yarn add cors
+const cors = require("cors");
+app.use(cors())
+
+- MODIFICACION DEL CODIGO PARA GUARDAR LA INFO EN LA BASE DE MONGODB
+- EN BACKEND app.js
+require("dotenv").config()
+const express = require("express")
+const mongoose = require("mongoose")
+const cors = require("cors");
+
+const app = express()
+
+app.use(cors())//intercepta todas las request que ingresarn y por deefecto deja pasar todas las request que vengan de cualquier servidor
+
+mongoose.connect(
+    `mongodb+srv://mcuadros83:${process.env.MONGO_DB_PASSWORD}@development.48eeibf.mongodb.net/stock-app?retryWrites=true&w=majority`///stock-app indica la nueva base de datos que queremos que se cree
+)
+    .then(result => {
+        app.listen(PORT, () => {
+            console.log(`server ${PORT}`)
+        })
+        console.log("Conexion exitosa a la base de datos")
+    })
+    .catch((err) => console.log("err"))
+
+const productSchema = mongoose.Schema({
+    name: { type: String, require: true },
+    price: Number
+},
+    { timestamps: true }//se crean 2 campos automatcamente createdApp y updatedApp
+)
+
+const Product = mongoose.model("Product", productSchema, "Products") //nombremodelo, nombreesquema, nombrecoleccion (si no llenamos este campo, mongodb pluraiza el nombre del modelo ej Products)
+
+app.use(express.json())
+
+app.post('/api/v1/products', (req, res) => {//req es lo que llega y res es lo que respondemos
+    // console.log({body: req.body})
+        // const newProduct = new Product(req.body)
+        const name = req.body.productName;
+        const price = req.body.productPrice;
+        const newProduct = new Product({name,price //esto en el caso de que el body contenta propiedades distintas a las declaradas en el modelo 
+    })
+        // const newProduct = new Product(req.body)//se podria haber pasado solo este parametro, ya que en el body estamos pasando las variables con la misma estructura, por lo tanto req.body contiene esa estructura definida en el modelo, express se encarga de parsearlo y dejarlo como string por el middleware express.json declarado arriba
+
+
+    newProduct
+        .save()
+        .then(result => {
+            res.status(201).json({ ok: true })
+        })
+        .catch((err) => console.log(err))
+})
+
+const PORT = process.env.PORT || 4000
+
+//EN FRONTEND App.js
+import logo from './logo.svg';
+import './App.css';
+import { useState } from 'react';
+
+function App() {
+  const [productName, setProductName] = useState("Curso de react")
+  const [productPrice, setProductPrice] = useState(0)
+  
+  const handleNameChange = (e) => {
+    const name = e.target.value
+    setProductName(name)
+  }
+  const handlePriceChange = (e) => {
+    const price = e.target.value
+    setProductPrice(price)
+  }
+  const handleSubmit = (e)=>{
+    e.preventDefault()//evita hacer la peticion del formulario al servidor
+    console.log(e)
+    fetch("http://localhost:4000/api/v1/products",{ //con esta configuracion estamos aputando al backend
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+      },
+      body:JSON.stringify({ //dentro del body estamos respetando el nombre de las mismas variables definidas para el modelo de mongoose
+        productName: productName,
+        productPrice: productPrice
+        // name: productName,
+        // price: productPrice
+      })
+    })
+  }
+
+  console.log({ productName })
+  console.log({ productPrice })
+  return (
+    <div className="App">
+      <h1>NUEVO PRODUCTO</h1>
+      <form onSubmit={handleSubmit}>
+        <input onChange={handleNameChange} type="text" name="name" placeholder='Nombre del producto' value={productName}></input>
+        <input onChange={handlePriceChange} type="number" name="price" placeholder='Precio del producto' value={productPrice}></input>
+        <button>Crear producto</button>
+      </form>
+    </div>
+  );
+}
+
+export default App;
+
+
+-------------------------------------------------------------------------------
+
+- SINTETIZANDO EL CODIGO
+- FRONTEND EN APP.js
+import logo from './logo.svg';
+import './App.css';
+import { useState } from 'react';
+
+function App() {
+
+  const initialState = { name: "", price: 0 }
+  const [isLoading, setIsloading] = useState(false)
+  const [product, setProduct] = useState(initialState)
+
+
+  // const [productName, setProductName] = useState("Curso de react")
+  // const [productPrice, setProductPrice] = useState(0)
+
+  // const handleNameChange = (e) => {
+  //   const name = e.target.value
+  //   setProductName(name)
+  // }
+  // const handlePriceChange = (e) => {
+  //   const price = e.target.value
+  //   setProductPrice(price)
+  // }
+
+  const handleChange = (e) => {
+    // const name = e.target.value
+    const fieldValue = e.target.value
+    const fieldName = e.target.name
+
+    // console.log({fieldValue,fieldName})
+    setProduct({ ...product, [fieldName]: fieldValue })
+    //de esta manera con el spread operator desestructura la variable inicial en este caso en name y price 
+    //y le asigna los valores historicos, y despues se sea dinamicamente los valores. [] indicara en que campo esta posicionado 
+    //el usuario, mientras que field value sin [] indicara el valor de dicho campo
+  }
+
+  // console.log({ product })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()//evita hacer la peticion del formulario al servidor
+    setIsloading(true);
+    fetch("http://localhost:4000/api/v1/products", { //con esta configuracion estamos aputando al backend
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(//dentro del body estamos respetando el nombre de las mismas variables definidas para el modelo de mongoose
+        product
+        // name: product.name, //lo podriamos enviar por separado, pero directamente agregamos product porque tiene las mismas propiedades ya declaradas en el estado
+        // price: product.price
+
+        // productName: productName,
+        // productPrice: productPrice
+        // name: productName,
+        // price: productPrice
+      )
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok) {
+          console.log("Producto creado con exito")
+          setProduct(initialState)
+
+        } else {
+          console.log(data.message)
+        }
+        setIsloading(false);
+      })
+      .catch((err) => {
+        console.log(err)
+        setIsloading(false)
+      })
+  }
+
+  // console.log({ productName })
+  // console.log({ productPrice })
+  return (
+    <div className="App">
+      <h1>NUEVO PRODUCTO</h1>
+      <form onSubmit={handleSubmit}>
+        <input onChange={handleChange} type="text" name="name" placeholder='Nombre del producto' value={product.name}></input>
+        <input onChange={handleChange} type="number" name="price" placeholder='Precio del producto' value={product.price}></input>
+        <button>
+          {
+            isLoading ? "Creando producto..." : "Crear producto"
+          }
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default App;
+
+- BACKEND (en app.js)
+require("dotenv").config()
+const express = require("express")
+const mongoose = require("mongoose")
+const cors = require("cors");
+// const path = require("path") //modulo nativo de nodejs para que puedan aceptarse las distintas configuraciones de las barras en los distintos sistemas operativos
+// const axios = require("axios")
+
+
+const app = express()
+
+app.use(cors())//intercepta todas las request que ingresarn y por deefecto deja pasar todas las request que vengan de cualquier servidor
+
+mongoose.connect(
+    `mongodb+srv://mcuadros83:${process.env.MONGO_DB_PASSWORD}@development.48eeibf.mongodb.net/stock-app?retryWrites=true&w=majority`///stock-app indica la nueva base de datos que queremos que se cree
+)
+    .then(result => {
+        app.listen(PORT, () => {
+            console.log(`server ${PORT}`)
+        })
+        console.log("Conexion exitosa a la base de datos")
+    })
+    .catch((err) => console.log("err"))
+
+const productSchema = mongoose.Schema({
+    name: { type: String, require: true },
+    price: Number
+},
+    { timestamps: true }//se crean 2 campos automatcamente createdApp y updatedApp
+)
+
+const Product = mongoose.model("Product", productSchema, "Products") //nombremodelo, nombreesquema, nombrecoleccion (si no llenamos este campo, mongodb pluraiza el nombre del modelo ej Products)
+
+app.use(express.json())
+
+
+
+app.post('/api/v1/products', (req, res) => {//req es lo que llega y res es lo que respondemos
+    if(!req.body.name){ //si no viene el nombre en el body
+        res 
+            .status(400)
+            .json({
+                ok:false,
+                message:"El campo nombre del producto es obligatorio"
+            })
+            return //esto para que termine
+    }
+    // console.log({body: req.body})
+        // const newProduct = new Product(req.body)
+        // const name = req.body.productName;
+        // const price = req.body.productPrice;
+        //const newProduct = new Product({name,price //esto en el caso de que el body contenta propiedades distintas a las declaradas en el modelo 
+        const newProduct = new Product (req.body)
+    //})
+        // const newProduct = new Product(req.body)//se podria haber pasado solo este parametro, ya que en el body estamos pasando las variables con la misma estructura, por lo tanto req.body contiene esa estructura definida en el modelo, express se encarga de parsearlo y dejarlo como string por el middleware express.json declarado arriba
+
+
+    newProduct
+        .save()
+        .then(result => {
+            res.status(201).json({ ok: true })
+        })
+        .catch((err) => console.log(err))
+})
+
+const PORT = process.env.PORT || 4000
+
+
+
+-------------------------------------------------------
+
+DEPLOY DEL BACKEND AZURE Y FRONTEND EN VERCEL
+
+- ESTRUCTURAR BACKEND
+Backend - db - index.js (creacion)
+Se copia la conexion mongoose a este archivo  y se le pasa la funcion creada al archivo app.js 
+
+- MODULOS SE SCHEMAS DE MONGOOSE
+- RUTAS (routes)
+localhost:4000/api/v1/products
+
+ESTRUCTURA BACKEND
+- backend/routes/product.js (se agregaran los routers que manejaran las rutas)
+const express = require("express")
+const router = express.Router() //al ser una funcion hay que ejecutarla
+const productControllers = require("../controllers/product")
+
+router.post("/", productControllers.createProduct )   
+router.get("/", productControllers.getProducts)
+//router.delete("/:id", productControllers.deleteProduct) //ejemplo para rutas para eliminar datos
+module.exports = router
+//rutas especificas que controlan cada una de las entidades que existen en nuestro proyecto
+
+- bakcend/controllers/product.js (se agregan las funciones que controlaran las peticiones que llegan a las distintas rutas de nuestro servidor)
+const Product = require("../models/product")
+
+const getProducts = async (req, res) => {
+    const products = await Product.find()
+    res.status(200).json({ ok: true, data: products })
+}
+const createProduct = (req, res) => {//req es lo que llega y res es lo que respondemos
+    if (!req.body.name) { //si no viene el nombre en el body
+        res
+            .status(400)
+            .json({
+                ok: false,
+                message: "El campo nombre del producto es obligatorio"
+            })
+        return //esto para que termine
+    }
+    const newProduct = new Product(req.body)
+    newProduct
+        .save()
+        .then((result) => {
+            res.status(201).json({ ok: true })
+        })
+        .catch((err) => console.log(err))
+}
+module.exports = {
+    getProducts,
+    createProduct
+}
+//contener todas las funciones que van a controlar todas las peticioens qeu llegan a las distintas rutas
+
+- backend/app.js (contendra el llamado a toda la logica de los distintos archivos)
+require("dotenv").config()
+const express = require("express")
+const dbConnect = require("./db")
+const cors = require("cors");
+const productRouter = require("./routes/product")
+const app = express()
+
+dbConnect(app);
+app.use(cors())//intercepta todas las request que ingresarn y por deefecto deja pasar todas las request que vengan de cualquier servidor
+app.use(express.json())
+app.use('/api/v1/products', productRouter) //le estamos indicando que utilice un determinado router cuando se visite dicha ruta
+//app.use('/api/v1/users', userRouter) //En caso de que crearamos usuarios, deberiamos crear un archivo users.js y configurarle distintsa rutas, crear una determinada ruta bajo determinado endpoint y pasarle cual es el router que lo va a manejar
+
+- backend/db/index.js (contiene la conexion a la bd)
+require("dotenv").config()
+const mongoose = require("mongoose")
+
+
+const dbConnect = (app) => {
+        mongoose.connect(
+            `mongodb+srv://mcuadros83:${process.env.MONGO_DB_PASSWORD}@development.48eeibf.mongodb.net/stock-app?retryWrites=true&w=majority`///stock-app indica la nueva base de datos que queremos que se cree
+        )
+            .then(result => {
+                const PORT = process.env.PORT || 4000
+                app.listen(PORT, () => {
+                    console.log(`server ${PORT}`)
+                })
+                console.log("Conexion exitosa a la base de datos")
+            })
+            .catch((err) => console.log("err"))
+
+    
+}
+
+module.exports = dbConnect
+
+AZURE:
+- Crear cuenta
+- Crear nuevo recurso: web apps / aplicacion web
+- Crear grupo de recursos
+- Dentro del grupode recursos/crear/aplicacion web
+- La ruta sera stock-app2..azurewebsites.net
+- Rellenar los datos/ Pila de entorno de ejecucio: node js (buscar la version)
+- Cambiar el tamaño (sku y tamaño) 
+- Autorizar Azure acceso a github
+- Pull de las carpetas creadas en github 
+git pull origin master
+- Push de cambios desde consola a github (indicara que inicie el servidor de Azure)
+(todos los pasos previos)
+git push
+
+- ATAJOS
+Particion termina:
+CTRL + SHIF + 5 
+
+
+
+
+- ASP (app service plan) es una maquina contratada a microsoft donde se le puede instalar una aplicacion
+- Centro de implementacion (conexion a github)
+
+CONFIGURACION AZURE
+https://www.youtube.com/watch?v=Dk69gk6NHKU&list=PLAmcNbGd0fkNIA3xFAbu99xgorPm4yxFX&index=13
+01:50:00
+
+
+- CREAR FRONTEND CON NEXT.JS
+- Crear proyecto
+yarn create next-app (RECHAZRA TYPESCRIPTY ILNT)
+ 
+- Crear una nueva ruta
+Se debe crear dentro de la carpeta pages el archivo nombre.js
+
+https://www.youtube.com/watch?v=EmaPHnq4XNw&list=PLAmcNbGd0fkNIA3xFAbu99xgorPm4yxFX&index=19
+01:48:00
 
